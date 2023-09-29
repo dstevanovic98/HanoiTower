@@ -44,7 +44,6 @@
         public HashSet<long> setNew = new HashSet<long>();
         public byte[] stateArray;
         public bool[] canMoveArray;
-        public object setNewLock = new object();
 
 
         public byte[] newState;
