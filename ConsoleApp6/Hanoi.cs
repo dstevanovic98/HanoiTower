@@ -23,11 +23,11 @@
 
     public interface IHanoi
     {
-       HanoiType type { get; set; }
-       byte numDiscs { get; set; }
-    //   byte numPegs { get; set; }
+        HanoiType type { get; set; }
+        byte numDiscs { get; set; }
+        //   byte numPegs { get; set; }
     }
-    
+
 
 
 
@@ -38,12 +38,13 @@
         public readonly byte numPegs = 4;
         public HanoiType type { get; set; }
 
-       // Iniate data types for all 
+        // Iniate data types for all 
         public HashSet<long> setPrev = new HashSet<long>();
         public HashSet<long> setCurrent = new HashSet<long>();
         public HashSet<long> setNew = new HashSet<long>();
         public byte[] stateArray;
         public bool[] canMoveArray;
+        public object setNewLock = new object();
 
 
         public byte[] newState;
@@ -153,6 +154,7 @@
         {
             uint num = 0;
             uint factor = 1;
+            for (int i = numDiscs - 1; i >= 0; i--)
             {
                 num += pegNumber * factor;
                 factor *= this.numPegs;
@@ -163,6 +165,7 @@
         {
             uint num = 0;
             uint factor = 1;
+            for (int i = numDiscs - 1; i >= 0; i--)
             {
                 num += factor;
                 factor *= this.numPegs;
@@ -170,114 +173,117 @@
             return num;
         }
 
-        public Hanoi() { }
-    }
-        public class K13 : Hanoi 
+        public Hanoi(HanoiType hanoiType)
         {
-           
-            private void MakeMoveForSmallDimension_K13(byte[] state)
-            {
-                ResetArray(canMoveArray);
+            this.type = hanoiType;
+        }
+    }
+    public class K13 : Hanoi
+    {
 
-                for (int i = 0; i < numDiscs; i++)
+        private void MakeMoveForSmallDimension_K13(byte[] state)
+        {
+            ResetArray(canMoveArray);
+
+            for (int i = 0; i < numDiscs; i++)
+            {
+                if (canMoveArray[state[i]])
                 {
-                    if (canMoveArray[state[i]])
+                    if (state[i] == 0)
                     {
-                        if (state[i] == 0)
+                        for (byte j = 1; j < numPegs; j++)
                         {
-                            for (byte j = 1; j < numPegs; j++)
+                            if (canMoveArray[j])
                             {
-                                if (canMoveArray[j])
-                                {
-                                    AddNewState(state, i, j);
-                                }
-                            }
-                        }
-                        else // From other vertices we can only move to center
-                        {
-                            if (canMoveArray[0])
-                            {
-                                AddNewState(state, i, 0);
+                                AddNewState(state, i, j);
                             }
                         }
                     }
-                    canMoveArray[state[i]] = false;
+                    else // From other vertices we can only move to center
+                    {
+                        if (canMoveArray[0])
+                        {
+                            AddNewState(state, i, 0);
+                        }
+                    }
+                }
+                canMoveArray[state[i]] = false;
+            }
+        }
+
+        private void MakeMoveForSmallDimension_K13_01_Fast(byte[] state)
+        {
+            ResetArray(canMoveArray);
+
+            for (int i = 0; i < numDiscs - 2; i++)
+            {
+                if (canMoveArray[state[i]])
+                {
+                    if (state[i] == 0)
+                    {
+                        for (byte j = 1; j < numPegs; j++)
+                        {
+                            if (canMoveArray[j])
+                            {
+                                AddNewState(state, i, j);
+                            }
+                        }
+                    }
+                    else // From other vertices we can only move to center
+                    {
+                        if (canMoveArray[0])
+                        {
+                            AddNewState(state, i, 0);
+                        }
+                    }
+                }
+                canMoveArray[state[i]] = false;
+            }
+            // The second biggest:
+            if (state[numDiscs - 2] == 0 && state[numDiscs - 1] == 0)
+            {
+                if (canMoveArray[0] && canMoveArray[2])
+                {
+                    AddNewState(state, numDiscs - 2, 2);
+                }
+                if (canMoveArray[0] && canMoveArray[3])
+                {
+                    AddNewState(state, numDiscs - 2, 3);
+                }
+                canMoveArray[0] = false;
+            }
+            else if (state[numDiscs - 2] == 0 && state[numDiscs - 1] == 1)
+            {
+                if (canMoveArray[0] && canMoveArray[1])
+                {
+                    AddNewState(state, numDiscs - 2, 1);
+                }
+                canMoveArray[0] = false;
+            }
+            else if (state[numDiscs - 2] > 1 && state[numDiscs - 1] == 1)
+            {
+                if (canMoveArray[state[numDiscs - 2]] && canMoveArray[0])
+                {
+                    AddNewState(state, numDiscs - 2, 0);
+                }
+                canMoveArray[state[numDiscs - 2]] = false;
+            }
+            // Biggest disk is moved only once
+            if (state[numDiscs - 1] == 0)
+            {
+                if (canMoveArray[0] && canMoveArray[1])
+                {
+                    AddNewState(state, numDiscs - 1, 1);
+                    //Console.WriteLine("The biggest is moved!\n");
                 }
             }
+        }
 
-            private void MakeMoveForSmallDimension_K13_01_Fast(byte[] state)
-            {
-                ResetArray(canMoveArray);
-
-                for (int i = 0; i < numDiscs - 2; i++)
-                {
-                    if (canMoveArray[state[i]])
-                    {
-                        if (state[i] == 0)
-                        {
-                            for (byte j = 1; j < numPegs; j++)
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    AddNewState(state, i, j);
-                                }
-                            }
-                        }
-                        else // From other vertices we can only move to center
-                        {
-                            if (canMoveArray[0])
-                            {
-                                AddNewState(state, i, 0);
-                            }
-                        }
-                    }
-                    canMoveArray[state[i]] = false;
-                }
-                // The second biggest:
-                if (state[numDiscs - 2] == 0 && state[numDiscs - 1] == 0)
-                {
-                    if (canMoveArray[0] && canMoveArray[2])
-                    {
-                        AddNewState(state, numDiscs - 2, 2);
-                    }
-                    if (canMoveArray[0] && canMoveArray[3])
-                    {
-                        AddNewState(state, numDiscs - 2, 3);
-                    }
-                    canMoveArray[0] = false;
-                }
-                else if (state[numDiscs - 2] == 0 && state[numDiscs - 1] == 1)
-                {
-                    if (canMoveArray[0] && canMoveArray[1])
-                    {
-                        AddNewState(state, numDiscs - 2, 1);
-                    }
-                    canMoveArray[0] = false;
-                }
-                else if (state[numDiscs - 2] > 1 && state[numDiscs - 1] == 1)
-                {
-                    if (canMoveArray[state[numDiscs - 2]] && canMoveArray[0])
-                    {
-                        AddNewState(state, numDiscs - 2, 0);
-                    }
-                    canMoveArray[state[numDiscs - 2]] = false;
-                }
-                // Biggest disk is moved only once
-                if (state[numDiscs - 1] == 0)
-                {
-                    if (canMoveArray[0] && canMoveArray[1])
-                    {
-                        AddNewState(state, numDiscs - 1, 1);
-                        //Console.WriteLine("The biggest is moved!\n");
-                    }
-                }
-            }
-
-            public int ShortestPathForSmallDimension()
+        public int ShortestPathForSmallDimension()
         {
             // For each disc we have its peg
-            stateArray = new byte[this.numDiscs];
-            canMoveArray = new bool[this.numPegs];
+            stateArray = new byte[numDiscs];
+            canMoveArray = new bool[numPegs];
 
             setPrev = new();
             setCurrent = new();
@@ -317,8 +323,8 @@
                     maxCardinality = setCurrent.Count;
 
 
-               // setCurrent.AsParallel().ForAll(num =>
-                 foreach (int num in setCurrent)
+                // setCurrent.AsParallel().ForAll(num =>
+                foreach (int num in setCurrent)
                 {
                     if (num == finalState)
                     {
@@ -326,23 +332,23 @@
                     }
                     else if (solved == 0)
                     {
-                       // lock (this)
-                      //  {
-                            byte[] tmpState = LongToState(num);
+                        // lock (this)
+                        //  {
+                        byte[] tmpState = LongToState(num);
 
-                            switch (type)
-                            {
-                                case HanoiType.K13_01:
-                                    MakeMoveForSmallDimension_K13_01_Fast(tmpState);
-                                    break;
+                        switch (type)
+                        {
+                            case HanoiType.K13_01:
+                                MakeMoveForSmallDimension_K13_01_Fast(tmpState);
+                                break;
 
-                                case HanoiType.K13_12:
-                                    MakeMoveForSmallDimension_K13(tmpState);
-                                    break;
-                            }
+                            case HanoiType.K13_12:
+                                MakeMoveForSmallDimension_K13(tmpState);
+                                break;
                         }
                     }
-              //  });
+                }
+                //  });
 
 
                 if (solved != 1)
@@ -373,63 +379,65 @@
                 }
             }
         }
+        public K13(HanoiType hanoiType) : base(hanoiType) { }
 
     }
-        public class K13e : Hanoi
+    public class K13e : Hanoi
+    {
+        public int ShortestPathForSmallDimension()
         {
-            public int ShortestPathForSmallDimension()
+
+            // For each disc we have its peg
+            stateArray = new byte[numDiscs];
+            canMoveArray = new bool[numPegs];
+
+            setPrev = new();
+            setCurrent = new();
+            setNew = new();
+
+            // Set initial and final states for each case
             {
-
-                // For each disc we have its peg
-                stateArray = new byte[this.numDiscs];
-                canMoveArray = new bool[this.numPegs];
-
-                setPrev = new();
-                setCurrent = new();
-                setNew = new();
-
-                // Set initial and final states for each case
+                if (this.type == HanoiType.K13e_01)
                 {
-                    if (this.type == HanoiType.K13e_01)
-                    {
-                        stateArray = ArrayAllEqual(0);
-                        finalState = StateAllEqual(1);
-                    }
-                    else if (this.type == HanoiType.K13e_12)
-                    {
-                        stateArray = ArrayAllEqual(1);
-                        finalState = StateAllEqual(2);
-                    }
-                    else if (this.type == HanoiType.K13e_23)
-                    {
-                        stateArray = ArrayAllEqual(2);
-                        finalState = StateAllEqual(3);
-                    }
-                    else if (this.type == HanoiType.K13e_30)
-                    {
-                        stateArray = ArrayAllEqual(3);
-                        finalState = StateAllEqual(0);
-                    }
-                    else
-                    {
-                        throw new Exception("Hanoi type state is not defined here!");
-                    }
+                    stateArray = ArrayAllEqual(0);
+                    finalState = StateAllEqual(1);
                 }
-
-                currentDistance = 0;
-                uint initialState = StateToLong(stateArray); // postavimo vse diske na pozicijo 
-                setCurrent.Add(initialState);
-
-                int maxCardinality = 0;
-                long maxMemory = 0;
-                InitIgnoredStates(type);
-                uint solved = 0;
-
-
-                while (true) // Analiza posameznega koraka (i-tega premika)
+                else if (this.type == HanoiType.K13e_12)
                 {
-                    if (maxCardinality < setCurrent.Count)
-                        maxCardinality = setCurrent.Count;
+                    stateArray = ArrayAllEqual(1);
+                    finalState = StateAllEqual(2);
+                }
+                else if (this.type == HanoiType.K13e_23)
+                {
+                    stateArray = ArrayAllEqual(2);
+                    finalState = StateAllEqual(3);
+                }
+                else if (this.type == HanoiType.K13e_30)
+                {
+                    stateArray = ArrayAllEqual(3);
+                    finalState = StateAllEqual(0);
+                }
+                else
+                {
+                    throw new Exception("Hanoi type state is not defined here!");
+                }
+            }
+
+            currentDistance = 0;
+            uint initialState = StateToLong(stateArray); // postavimo vse diske na pozicijo 
+            setCurrent.Add(initialState);
+
+            int maxCardinality = 0;
+            long maxMemory = 0;
+            InitIgnoredStates(type);
+            uint solved = 0;
+
+
+            while (true) // Analiza posameznega koraka (i-tega premika)
+            {
+                if (maxCardinality < setCurrent.Count)
+                    maxCardinality = setCurrent.Count;
+
 
                 // setCurrent.AsParallel().ForAll(num =>
                 //Parallel.ForEach(setCurrent, num => 
@@ -445,677 +453,739 @@
                         MakeMoveForSmallDimension_K13e(tmpState);
                     }
                 }
-                 //   });
+                //   });
 
 
-                    if (solved != 1)
+                if (solved != 1)
+                {
+                    long mem = GC.GetTotalMemory(false);
+                    if (maxMemory < mem)
                     {
-                        long mem = GC.GetTotalMemory(false);
-                        if (maxMemory < mem)
-                        {
-                            maxMemory = mem;
-                        }
-
-                        // Ko se premaknemo iz vseh trenutnih stanj,
-                        // pregledamo nova trenutna stanja
-
-                        setPrev = setCurrent;
-                        setCurrent = new(setNew);
-                        setNew = new();
-
-
-                        currentDistance++;
-
-                        Console.WriteLine("Current distance: " + currentDistance + "     Maximum cardinality: " + maxCardinality);
-                        Console.WriteLine("Memory allocation: " + mem / 1000000 + "MB  \t\t Maximum memory: " + maxMemory / 1000000 + "MB");
-                        Console.CursorTop -= 2;
+                        maxMemory = mem;
                     }
-                    else
-                    {
-                        return currentDistance;
-                    }
+
+                    // Ko se premaknemo iz vseh trenutnih stanj,
+                    // pregledamo nova trenutna stanja
+
+                    setPrev = setCurrent;
+                    setCurrent = new(setNew);
+                    setNew = new();
+
+
+                    currentDistance++;
+
+                    Console.WriteLine("Current distance: " + currentDistance + "     Maximum cardinality: " + maxCardinality);
+                    Console.WriteLine("Memory allocation: " + mem / 1000000 + "MB  \t\t Maximum memory: " + maxMemory / 1000000 + "MB");
+                    Console.CursorTop -= 2;
+                }
+                else
+                {
+                    return currentDistance;
                 }
             }
-            private void MakeMoveForSmallDimension_K13e(byte[] state)
-            {
-                bool[] innerCanMoveArray = new bool[this.numPegs];
-                ResetArray(innerCanMoveArray);
-                byte[] innerNewState;
+        }
+        private void MakeMoveForSmallDimension_K13e(byte[] state)
+        {
+            bool[] innerCanMoveArray = new bool[this.numPegs];
+            ResetArray(innerCanMoveArray);
+            byte[] innerNewState;
 
-                for (int i = 0; i < numDiscs; i++)
+            for (int i = 0; i < numDiscs; i++)
+            {
+                if (innerCanMoveArray[state[i]])
                 {
-                    if (innerCanMoveArray[state[i]])
+                    if (state[i] == 0)
                     {
-                        if (state[i] == 0)
+                        for (byte j = 1; j < numPegs; j++)
                         {
-                            for (byte j = 1; j < numPegs; j++)
-                            {
-                                if (innerCanMoveArray[j])
-                                {
-                                    innerNewState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        innerNewState[x] = state[x];
-                                    innerNewState[i] = j;
-                                    long innerCurrentState = StateToLong(innerNewState);
-                                    // Zaradi takih preverjanj potrebujemo hitro iskanje!
-                                    if (!setPrev.Contains(innerCurrentState))
-                                    {
-                                        {
-                                            setNew.Add(innerCurrentState);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 1)
-                        {
-                            if (innerCanMoveArray[0])
+                            if (innerCanMoveArray[j])
                             {
                                 innerNewState = new byte[state.Length];
                                 for (int x = 0; x < state.Length; x++)
                                     innerNewState[x] = state[x];
-                                innerNewState[i] = 0;
+                                innerNewState[i] = j;
                                 long innerCurrentState = StateToLong(innerNewState);
+                                // Zaradi takih preverjanj potrebujemo hitro iskanje!
                                 if (!setPrev.Contains(innerCurrentState))
                                 {
+                                    lock (setNew)
                                     {
                                         setNew.Add(innerCurrentState);
                                     }
                                 }
                             }
                         }
-                        else if (state[i] == 2)
+                    }
+                    else if (state[i] == 1)
+                    {
+                        if (innerCanMoveArray[0])
                         {
-                            foreach (byte j in new byte[] { 0, 3 })
+                            innerNewState = new byte[state.Length];
+                            for (int x = 0; x < state.Length; x++)
+                                innerNewState[x] = state[x];
+                            innerNewState[i] = 0;
+                            long innerCurrentState = StateToLong(innerNewState);
+                            if (!setPrev.Contains(innerCurrentState))
                             {
-                                if (innerCanMoveArray[j])
+                                lock (setNew)
                                 {
-                                    innerNewState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        innerNewState[x] = state[x];
-                                    innerNewState[i] = j;
-                                    long innerCurrentState = StateToLong(innerNewState);
-                                    if (!setPrev.Contains(innerCurrentState))
-                                    {
-                                        {
-                                            setNew.Add(innerCurrentState);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 3)
-                        {
-                            foreach (byte j in new byte[] { 0, 2 })
-                            {
-                                if (innerCanMoveArray[j])
-                                {
-                                    innerNewState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        innerNewState[x] = state[x];
-                                    innerNewState[i] = j;
-                                    long innerCurrentState = StateToLong(innerNewState);
-                                    if (!setPrev.Contains(innerCurrentState))
-                                    {
-                                        {
-                                            setNew.Add(innerCurrentState);
-                                        }
-                                    }
+                                    setNew.Add(innerCurrentState);
                                 }
                             }
                         }
                     }
-                    innerCanMoveArray[state[i]] = false;
-                }
-            }
-
-        }
-        public class K4e : Hanoi
-        {
-            public int ShortestPathForSmallDimension()
-            {
-
-                // For each disc we have its peg
-                stateArray = new byte[this.numDiscs];
-                canMoveArray = new bool[this.numPegs];
-
-                setPrev = new();
-                setCurrent = new();
-                setNew = new();
-
-                // Set initial and final states for each case
-                {
-                    if (this.type == HanoiType.K4e_01)
+                    else if (state[i] == 2)
                     {
-                        stateArray = ArrayAllEqual(0);
-                        finalState = StateAllEqual(1);
+                        foreach (byte j in new byte[] { 0, 3 })
+                        {
+                            if (innerCanMoveArray[j])
+                            {
+                                innerNewState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    innerNewState[x] = state[x];
+                                innerNewState[i] = j;
+                                long innerCurrentState = StateToLong(innerNewState);
+                                if (!setPrev.Contains(innerCurrentState))
+                                {
+                                    lock (setNew)
+                                    {
+                                        setNew.Add(innerCurrentState);
+                                    }
+                                }
+                            }
+                        }
                     }
-                    else if (this.type == HanoiType.K4e_12)
+                    else if (state[i] == 3)
                     {
-                        stateArray = ArrayAllEqual(1);
-                        finalState = StateAllEqual(2);
-                    }
-                    else if (this.type == HanoiType.K4e_23)
-                    {
-                        stateArray = ArrayAllEqual(2);
-                        finalState = StateAllEqual(3);
-                    }
-                    else
-                    {
-                        throw new Exception("Hanoi type state is not defined here!");
+                        foreach (byte j in new byte[] { 0, 2 })
+                        {
+                            if (innerCanMoveArray[j])
+                            {
+                                innerNewState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    innerNewState[x] = state[x];
+                                innerNewState[i] = j;
+                                long innerCurrentState = StateToLong(innerNewState);
+                                if (!setPrev.Contains(innerCurrentState))
+                                {
+                                    lock (setNew)
+                                    {
+                                        setNew.Add(innerCurrentState);
+                                    }
+                                }
+                            }
+                        }
                     }
                 }
-
-                currentDistance = 0;
-                uint initialState = StateToLong(stateArray); // postavimo vse diske na pozicijo 
-                setCurrent.Add(initialState);
-
-                int maxCardinality = 0;
-                long maxMemory = 0;
-                InitIgnoredStates(type);
-                uint solved = 0;
-
-
-                while (true) // Analiza posameznega koraka (i-tega premika)
-                {
-                    if (maxCardinality < setCurrent.Count)
-                        maxCardinality = setCurrent.Count;
-
-
-                    setCurrent.AsParallel().ForAll(num =>
-                    // foreach (int num in setCurrent)
-                    {
-                        if (num == finalState)
-                        {
-                            solved++;
-                        }
-                        else if (solved == 0)
-                        {
-                            {
-                                byte[] tmpState = LongToState(num);
-                                MakeMoveForSmallDimension_K4e(tmpState);
-                            }
-                        }
-                        // }
-                    });
-
-
-                    if (solved != 1)
-                    {
-                        long mem = GC.GetTotalMemory(false);
-                        if (maxMemory < mem)
-                        {
-                            maxMemory = mem;
-                        }
-
-                        // Ko se premaknemo iz vseh trenutnih stanj,
-                        // pregledamo nova trenutna stanja
-
-                        setPrev = setCurrent;
-                        setCurrent = new(setNew);
-                        setNew = new();
-
-
-                        currentDistance++;
-
-                        Console.WriteLine("Current distance: " + currentDistance + "     Maximum cardinality: " + maxCardinality);
-                        Console.WriteLine("Memory allocation: " + mem / 1000000 + "MB  \t\t Maximum memory: " + maxMemory / 1000000 + "MB");
-                        Console.CursorTop -= 2;
-                    }
-                    else
-                    {
-                        return currentDistance;
-                    }
-                }
-            }
-            private void MakeMoveForSmallDimension_K4e(byte[] state)
-            {
-                ResetArray(canMoveArray);
-
-                for (int i = 0; i < numDiscs; i++)
-                {
-                    if (canMoveArray[state[i]])
-                    {
-                        if (state[i] == 0)
-                        {
-                            foreach (byte j in new byte[] { 1, 2, 3 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 1)
-                        {
-                            foreach (byte j in new byte[] { 0, 2, 3 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 2)
-                        {
-                            foreach (byte j in new byte[] { 0, 1 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 3)
-                        {
-                            foreach (byte j in new byte[] { 0, 1 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    canMoveArray[state[i]] = false;
-                }
+                innerCanMoveArray[state[i]] = false;
             }
         }
-        public class C4 : Hanoi
+        public K13e(HanoiType hanoiType) : base(hanoiType) { }
+    }
+    public class K4e : Hanoi
+    {
+        public int ShortestPathForSmallDimension()
         {
-            public int ShortestPathForSmallDimension()
+
+            // For each disc we have its peg
+            stateArray = new byte[this.numDiscs];
+            canMoveArray = new bool[this.numPegs];
+
+            setPrev = new();
+            setCurrent = new();
+            setNew = new();
+
+            // Set initial and final states for each case
             {
-
-                // For each disc we have its peg
-                stateArray = new byte[this.numDiscs];
-                canMoveArray = new bool[this.numPegs];
-
-                setPrev = new();
-                setCurrent = new();
-                setNew = new();
-
-                // Set initial and final states for each case
+                if (this.type == HanoiType.K4e_01)
                 {
-                    if (this.type == HanoiType.C4_01)
-                    {
-                        stateArray = ArrayAllEqual(0);
-                        finalState = StateAllEqual(1);
-                    }
-                    else if (this.type == HanoiType.C4_12)
-                    {
-                        stateArray = ArrayAllEqual(1);
-                        finalState = StateAllEqual(2);
-                    }
-
-                    else
-                    {
-                        throw new Exception("Hanoi type state is not defined here!");
-                    }
+                    stateArray = ArrayAllEqual(0);
+                    finalState = StateAllEqual(1);
                 }
-
-                currentDistance = 0;
-                uint initialState = StateToLong(stateArray); // postavimo vse diske na pozicijo 
-                setCurrent.Add(initialState);
-
-                int maxCardinality = 0;
-                long maxMemory = 0;
-                InitIgnoredStates(type);
-                uint solved = 0;
-
-
-                while (true) // Analiza posameznega koraka (i-tega premika)
+                else if (this.type == HanoiType.K4e_12)
                 {
-                    if (maxCardinality < setCurrent.Count)
-                        maxCardinality = setCurrent.Count;
-
-
-                    setCurrent.AsParallel().ForAll(num =>
-                    // foreach (int num in setCurrent)
-                    {
-                        if (num == finalState)
-                        {
-                            solved++;
-                        }
-                        else if (solved == 0)
-                        {
-                            {
-                                byte[] tmpState = LongToState(num);
-                                MakeMoveForSmallDimension_C4(tmpState);
-                            }
-                        }
-                        // }
-                    });
-
-
-                    if (solved != 1)
-                    {
-                        long mem = GC.GetTotalMemory(false);
-                        if (maxMemory < mem)
-                        {
-                            maxMemory = mem;
-                        }
-
-                        // Ko se premaknemo iz vseh trenutnih stanj,
-                        // pregledamo nova trenutna stanja
-
-                        setPrev = setCurrent;
-                        setCurrent = new(setNew);
-                        setNew = new();
-
-
-                        currentDistance++;
-
-                        Console.WriteLine("Current distance: " + currentDistance + "     Maximum cardinality: " + maxCardinality);
-                        Console.WriteLine("Memory allocation: " + mem / 1000000 + "MB  \t\t Maximum memory: " + maxMemory / 1000000 + "MB");
-                        Console.CursorTop -= 2;
-                    }
-                    else
-                    {
-                        return currentDistance;
-                    }
+                    stateArray = ArrayAllEqual(1);
+                    finalState = StateAllEqual(2);
+                }
+                else if (this.type == HanoiType.K4e_23)
+                {
+                    stateArray = ArrayAllEqual(2);
+                    finalState = StateAllEqual(3);
+                }
+                else
+                {
+                    throw new Exception("Hanoi type state is not defined here!");
                 }
             }
-            private void MakeMoveForSmallDimension_C4(byte[] state)
+
+            currentDistance = 0;
+            uint initialState = StateToLong(stateArray); // postavimo vse diske na pozicijo 
+            setCurrent.Add(initialState);
+
+            int maxCardinality = 0;
+            long maxMemory = 0;
+            InitIgnoredStates(type);
+            uint solved = 0;
+
+
+            while (true) // Analiza posameznega koraka (i-tega premika)
             {
-                ResetArray(canMoveArray);
+                if (maxCardinality < setCurrent.Count)
+                    maxCardinality = setCurrent.Count;
 
-                for (int i = 0; i < numDiscs; i++)
+
+                setCurrent.AsParallel().ForAll(num =>
+                // foreach (int num in setCurrent)
                 {
-                    if (canMoveArray[state[i]])
+                    if (num == finalState)
                     {
-                        if (state[i] == 0)
-                        {
-                            foreach (byte j in new byte[] { 2, 3 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 1)
-                        {
-                            foreach (byte j in new byte[] { 2, 3 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 2)
-                        {
-                            foreach (byte j in new byte[] { 0, 1 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 3)
-                        {
-                            foreach (byte j in new byte[] { 0, 1 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
+                        solved++;
                     }
-                    canMoveArray[state[i]] = false;
-                }
-            }
-        }
-        public class P4 : Hanoi
-        {
-            public int ShortestPathForSmallDimension()
-            {
-
-                // For each disc we have its peg
-                stateArray = new byte[this.numDiscs];
-                canMoveArray = new bool[this.numPegs];
-
-                setPrev = new();
-                setCurrent = new();
-                setNew = new();
-
-                // Set initial and final states for each case
-                {
-                    if (this.type == HanoiType.P4_01)
+                    else if (solved == 0)
                     {
-                        stateArray = ArrayAllEqual(0);
-                        finalState = StateAllEqual(1);
-                    }
-                    else if (this.type == HanoiType.P4_12)
-                    {
-                        stateArray = ArrayAllEqual(1);
-                        finalState = StateAllEqual(2);
-                    }
-                    else if (this.type == HanoiType.P4_23)
-                    {
-                        stateArray = ArrayAllEqual(2);
-                        finalState = StateAllEqual(3);
-                    }
-                    else if (this.type == HanoiType.P4_31)
-                    {
-                        stateArray = ArrayAllEqual(3);
-                        finalState = StateAllEqual(1);
-                    }
-                    else
-                    {
-                        throw new Exception("Hanoi type state is not defined here!");
-                    }
-                }
-
-                currentDistance = 0;
-                uint initialState = StateToLong(stateArray); // postavimo vse diske na pozicijo 
-                setCurrent.Add(initialState);
-
-                int maxCardinality = 0;
-                long maxMemory = 0;
-                InitIgnoredStates(type);
-                uint solved = 0;
-
-
-                while (true) // Analiza posameznega koraka (i-tega premika)
-                {
-                    if (maxCardinality < setCurrent.Count)
-                        maxCardinality = setCurrent.Count;
-
-
-
-                    foreach (int num in setCurrent)
-                    {
-                        if (num == finalState)
-                        {
-                            solved++;
-                        }
-                        else if (solved == 0)
                         {
                             byte[] tmpState = LongToState(num);
-                            MakeMoveForSmallDimension_P4(tmpState);
+                            MakeMoveForSmallDimension_K4e(tmpState);
                         }
                     }
-
-                    if (solved != 1)
-                    {
-                        long mem = GC.GetTotalMemory(false);
-                        if (maxMemory < mem)
-                        {
-                            maxMemory = mem;
-                        }
-
-                        // Ko se premaknemo iz vseh trenutnih stanj,
-                        // pregledamo nova trenutna stanja
-
-                        setPrev = setCurrent;
-                        setCurrent = new(setNew);
-                        setNew = new();
+                    // }
+                });
 
 
-                        currentDistance++;
-
-                        Console.WriteLine("Current distance: " + currentDistance + "     Maximum cardinality: " + maxCardinality);
-                        Console.WriteLine("Memory allocation: " + mem / 1000000 + "MB  \t\t Maximum memory: " + maxMemory / 1000000 + "MB");
-                        Console.CursorTop -= 2;
-                    }
-                    else
-                    {
-                        return currentDistance;
-                    }
-                }
-            }
-            private void MakeMoveForSmallDimension_P4(byte[] state)
-            {
-                ResetArray(canMoveArray);
-
-                for (int i = 0; i < numDiscs; i++)
+                if (solved != 1)
                 {
-                    if (canMoveArray[state[i]])
+                    long mem = GC.GetTotalMemory(false);
+                    if (maxMemory < mem)
                     {
-                        if (state[i] == 0)
+                        maxMemory = mem;
+                    }
+
+                    // Ko se premaknemo iz vseh trenutnih stanj,
+                    // pregledamo nova trenutna stanja
+
+                    setPrev = setCurrent;
+                    setCurrent = new(setNew);
+                    setNew = new();
+
+
+                    currentDistance++;
+
+                    Console.WriteLine("Current distance: " + currentDistance + "     Maximum cardinality: " + maxCardinality);
+                    Console.WriteLine("Memory allocation: " + mem / 1000000 + "MB  \t\t Maximum memory: " + maxMemory / 1000000 + "MB");
+                    Console.CursorTop -= 2;
+                }
+                else
+                {
+                    return currentDistance;
+                }
+            }
+        }
+        private void MakeMoveForSmallDimension_K4e(byte[] state)
+        {
+            ResetArray(canMoveArray);
+
+            for (int i = 0; i < numDiscs; i++)
+            {
+                if (canMoveArray[state[i]])
+                {
+                    if (state[i] == 0)
+                    {
+                        foreach (byte j in new byte[] { 1, 2, 3 })
                         {
-                            foreach (byte j in new byte[] { 3 })
+                            if (canMoveArray[j])
                             {
-                                if (canMoveArray[j])
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
                                 {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 1)
-                        {
-                            foreach (byte j in new byte[] { 2 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 2)
-                        {
-                            foreach (byte j in new byte[] { 1, 3 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
-                                }
-                            }
-                        }
-                        else if (state[i] == 3)
-                        {
-                            foreach (byte j in new byte[] { 0, 2 })
-                            {
-                                if (canMoveArray[j])
-                                {
-                                    newState = new byte[state.Length];
-                                    for (int x = 0; x < state.Length; x++)
-                                        newState[x] = state[x];
-                                    newState[i] = j;
-                                    currentState = StateToLong(newState);
-                                    if (!setPrev.Contains(currentState))
-                                    {
-                                        setNew.Add(currentState);
-                                    }
+                                    setNew.Add(currentState);
                                 }
                             }
                         }
                     }
-                    canMoveArray[state[i]] = false;
+                    else if (state[i] == 1)
+                    {
+                        foreach (byte j in new byte[] { 0, 2, 3 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                    else if (state[i] == 2)
+                    {
+                        foreach (byte j in new byte[] { 0, 1 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                    else if (state[i] == 3)
+                    {
+                        foreach (byte j in new byte[] { 0, 1 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                }
+                canMoveArray[state[i]] = false;
+            }
+        }
+        public K4e(HanoiType hanoiType) : base(hanoiType) { }
+    }
+    public class C4 : Hanoi
+    {
+        public int ShortestPathForSmallDimension()
+        {
+
+            // For each disc we have its peg
+            stateArray = new byte[this.numDiscs];
+            canMoveArray = new bool[this.numPegs];
+
+            setPrev = new();
+            setCurrent = new();
+            setNew = new();
+
+            // Set initial and final states for each case
+            {
+                if (this.type == HanoiType.C4_01)
+                {
+                    stateArray = ArrayAllEqual(0);
+                    finalState = StateAllEqual(1);
+                }
+                else if (this.type == HanoiType.C4_12)
+                {
+                    stateArray = ArrayAllEqual(1);
+                    finalState = StateAllEqual(2);
+                }
+
+                else
+                {
+                    throw new Exception("Hanoi type state is not defined here!");
                 }
             }
 
+            currentDistance = 0;
+            uint initialState = StateToLong(stateArray); // postavimo vse diske na pozicijo 
+            setCurrent.Add(initialState);
+
+            int maxCardinality = 0;
+            long maxMemory = 0;
+            InitIgnoredStates(type);
+            uint solved = 0;
+
+
+            while (true) // Analiza posameznega koraka (i-tega premika)
+            {
+                if (maxCardinality < setCurrent.Count)
+                    maxCardinality = setCurrent.Count;
+
+
+                setCurrent.AsParallel().ForAll(num =>
+                // foreach (int num in setCurrent)
+                {
+                    if (num == finalState)
+                    {
+                        solved++;
+                    }
+                    else if (solved == 0)
+                    {
+                        {
+                            byte[] tmpState = LongToState(num);
+                            MakeMoveForSmallDimension_C4(tmpState);
+                        }
+                    }
+                    // }
+                });
+
+
+                if (solved != 1)
+                {
+                    long mem = GC.GetTotalMemory(false);
+                    if (maxMemory < mem)
+                    {
+                        maxMemory = mem;
+                    }
+
+                    // Ko se premaknemo iz vseh trenutnih stanj,
+                    // pregledamo nova trenutna stanja
+
+                    setPrev = setCurrent;
+                    setCurrent = new(setNew);
+                    setNew = new();
+
+
+                    currentDistance++;
+
+                    Console.WriteLine("Current distance: " + currentDistance + "     Maximum cardinality: " + maxCardinality);
+                    Console.WriteLine("Memory allocation: " + mem / 1000000 + "MB  \t\t Maximum memory: " + maxMemory / 1000000 + "MB");
+                    Console.CursorTop -= 2;
+                }
+                else
+                {
+                    return currentDistance;
+                }
+            }
         }
+        private void MakeMoveForSmallDimension_C4(byte[] state)
+        {
+            ResetArray(canMoveArray);
+
+            for (int i = 0; i < numDiscs; i++)
+            {
+                if (canMoveArray[state[i]])
+                {
+                    if (state[i] == 0)
+                    {
+                        foreach (byte j in new byte[] { 2, 3 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                    else if (state[i] == 1)
+                    {
+                        foreach (byte j in new byte[] { 2, 3 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                    else if (state[i] == 2)
+                    {
+                        foreach (byte j in new byte[] { 0, 1 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                    else if (state[i] == 3)
+                    {
+                        foreach (byte j in new byte[] { 0, 1 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                }
+                canMoveArray[state[i]] = false;
+            }
+        }
+
+        public C4(HanoiType hanoiType) : base(hanoiType) { }
+    }
+    public class P4 : Hanoi
+    {
+        public int ShortestPathForSmallDimension()
+        {
+
+            // For each disc we have its peg
+            stateArray = new byte[this.numDiscs];
+            canMoveArray = new bool[this.numPegs];
+
+            setPrev = new();
+            setCurrent = new();
+            setNew = new();
+
+            // Set initial and final states for each case
+            {
+                if (this.type == HanoiType.P4_01)
+                {
+                    stateArray = ArrayAllEqual(0);
+                    finalState = StateAllEqual(1);
+                }
+                else if (this.type == HanoiType.P4_12)
+                {
+                    stateArray = ArrayAllEqual(1);
+                    finalState = StateAllEqual(2);
+                }
+                else if (this.type == HanoiType.P4_23)
+                {
+                    stateArray = ArrayAllEqual(2);
+                    finalState = StateAllEqual(3);
+                }
+                else if (this.type == HanoiType.P4_31)
+                {
+                    stateArray = ArrayAllEqual(3);
+                    finalState = StateAllEqual(1);
+                }
+                else
+                {
+                    throw new Exception("Hanoi type state is not defined here!");
+                }
+            }
+
+            currentDistance = 0;
+            uint initialState = StateToLong(stateArray); // postavimo vse diske na pozicijo 
+            setCurrent.Add(initialState);
+
+            int maxCardinality = 0;
+            long maxMemory = 0;
+            InitIgnoredStates(type);
+            uint solved = 0;
+
+
+            while (true) // Analiza posameznega koraka (i-tega premika)
+            {
+                if (maxCardinality < setCurrent.Count)
+                    maxCardinality = setCurrent.Count;
+
+
+                //setCurrent.AsParallel().ForAll(num =>
+                foreach (int num in setCurrent)
+                {
+                    if (num == finalState)
+                    {
+                        solved++;
+                    }
+                    else if (solved == 0)
+                    {
+                        byte[] tmpState = LongToState(num);
+                        MakeMoveForSmallDimension_P4(tmpState);
+                    }
+                }
+
+                if (solved != 1)
+                {
+                    long mem = GC.GetTotalMemory(false);
+                    if (maxMemory < mem)
+                    {
+                        maxMemory = mem;
+                    }
+
+                    // Ko se premaknemo iz vseh trenutnih stanj,
+                    // pregledamo nova trenutna stanja
+
+                    setPrev = setCurrent;
+                    setCurrent = new(setNew);
+                    setNew = new();
+
+
+                    currentDistance++;
+
+                    Console.WriteLine("Current distance: " + currentDistance + "     Maximum cardinality: " + maxCardinality);
+                    Console.WriteLine("Memory allocation: " + mem / 1000000 + "MB  \t\t Maximum memory: " + maxMemory / 1000000 + "MB");
+                    Console.CursorTop -= 2;
+                }
+                else
+                {
+                    return currentDistance;
+                }
+            }
+        }
+        // Za 13 diskov pospeši do 100s
+        private void MakeMoveForSmallDimension_P4(byte[] state)
+        {
+            ResetArray(canMoveArray);
+
+            for (int i = 0; i < numDiscs; i++)
+            {
+                if (canMoveArray[state[i]])
+                {
+                    byte[] moves;
+                    switch (state[i])
+                    {
+                        case 0:
+                            moves = new byte[] { 3 };
+                            break;
+                        case 1:
+                            moves = new byte[] { 2 };
+                            break;
+                        case 2:
+                            moves = new byte[] { 1, 3 };
+                            break;
+                        case 3:
+                            moves = new byte[] { 0, 2 };
+                            break;
+                        default:
+                            moves = new byte[0];
+                            break;
+                    }
+
+                    foreach (byte j in moves)
+                    {
+                        if (canMoveArray[j])
+                        {
+                            byte[] newState = (byte[])state.Clone();
+                            newState[i] = j;
+                            long currentState = StateToLong(newState);
+
+                            if (!setPrev.Contains(currentState))
+                            {
+                                setNew.Add(currentState);
+                            }
+                        }
+                    }
+                }
+                canMoveArray[state[i]] = false;
+            }
+        }
+
+        //Na prvoten način
+        /*
+          
+            ANOTHER WAY
+        
+          private void MakeMoveForSmallDimension_P4(byte[] state)
+        {
+            ResetArray(canMoveArray);
+
+            for (int i = 0; i < numDiscs; i++)
+            {
+                if (canMoveArray[state[i]])
+                {
+                    if (state[i] == 0)
+                    {
+                        foreach (byte j in new byte[] { 3 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                    else if (state[i] == 1)
+                    {
+                        foreach (byte j in new byte[] { 2 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                    else if (state[i] == 2)
+                    {
+                        foreach (byte j in new byte[] { 1, 3 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                    else if (state[i] == 3)
+                    {
+                        foreach (byte j in new byte[] { 0, 2 })
+                        {
+                            if (canMoveArray[j])
+                            {
+                                newState = new byte[state.Length];
+                                for (int x = 0; x < state.Length; x++)
+                                    newState[x] = state[x];
+                                newState[i] = j;
+                                currentState = StateToLong(newState);
+                                if (!setPrev.Contains(currentState))
+                                {
+                                    setNew.Add(currentState);
+                                }
+                            }
+                        }
+                    }
+                }
+                canMoveArray[state[i]] = false;
+            }
+        }
+        */
+        public P4(HanoiType hanoiType) : base(hanoiType) { }
+
+    }
 
 }
